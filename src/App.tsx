@@ -305,13 +305,17 @@ const DownloadModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
               
               <div className="grid grid-cols-1 gap-3">
                 <a 
-                  href="#" 
+                  href="https://apps.apple.com/kr/app/%EB%8B%AC%EC%88%98%EB%B0%B0%EA%B4%80%EC%BC%80%EC%96%B4/id6788634887" 
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center justify-center gap-3 bg-black text-white py-4 rounded-2xl font-black text-lg hover:bg-gray-800 transition-all"
                 >
                   <Smartphone className="w-5 h-5" /> App Store 다운로드
                 </a>
                 <a 
-                  href="#" 
+                  href="https://play.google.com/store/apps/details?id=com.dalsu.plumbing&pcampaignid=web_share" 
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center justify-center gap-3 bg-gray-100 text-black py-4 rounded-2xl font-black text-lg hover:bg-gray-200 transition-all"
                 >
                   <Smartphone className="w-5 h-5" /> Google Play 다운로드
@@ -682,7 +686,7 @@ const AITechBanner = () => (
       className="relative w-full"
     >
       <a 
-        href="https://play.google.com/store/apps/details?id=com.dalsu.plumbing" 
+        href="https://play.google.com/store/apps/details?id=com.dalsu.plumbing&pcampaignid=web_share" 
         target="_blank" 
         rel="noopener noreferrer"
         className="block cursor-pointer transition-all duration-300 hover:scale-[1.005] hover:opacity-95"
@@ -1266,26 +1270,54 @@ const BookingForm = ({ initialType }: { initialType?: string }) => {
     // Format message for SMS
     const message = `[달수배관케어 상담신청]\n성함: ${formData.name}\n연락처: ${formData.phone}\n서비스: ${formData.service}\n내용: ${formData.content || '없음'}\n첨부사진: ${images.length}장`;
     
-    // Open SMS app (works best on mobile)
-    const smsUrl = `sms:01044993866?body=${encodeURIComponent(message)}`;
+    // Open SMS app
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const separator = isIOS ? '&' : '?';
+    const smsUrl = `sms:01044993866${separator}body=${encodeURIComponent(message)}`;
     window.location.href = smsUrl;
     
     setSubmitted(true);
   };
 
   if (submitted) {
+    const message = `[달수배관케어 상담신청]\n성함: ${formData.name}\n연락처: ${formData.phone}\n서비스: ${formData.service}\n내용: ${formData.content || '없음'}`;
+    const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const separator = isIOS ? '&' : '?';
+    const smsUrl = `sms:01044993866${separator}body=${encodeURIComponent(message)}`;
+
     return (
       <div className="pt-32 pb-20 px-4 text-center">
-        <div className="max-w-md mx-auto bg-yellow-50 p-12 rounded-[40px]">
-          <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-6" />
+        <div className="max-w-md mx-auto bg-yellow-50 p-8 sm:p-12 rounded-[40px] shadow-xl border border-yellow-100">
+          <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-6 animate-bounce" />
           <h2 className="text-3xl font-black mb-4">접수 완료!</h2>
-          <p className="text-gray-600 font-bold mb-4">담당 엔지니어가 5분 내로 전화 상담을 도와드리겠습니다.</p>
-          {images.length > 0 && (
-            <p className="text-sm text-yellow-700 font-bold mb-8">
-              첨부하신 사진 {images.length}장도 함께 전송되었습니다.
-            </p>
-          )}
-          <button onClick={() => window.location.reload()} className="bg-black text-white font-bold px-8 py-4 rounded-2xl">홈으로 돌아가기</button>
+          <p className="text-gray-700 font-bold mb-4 break-keep">
+            상담 내용이 <span className="text-blue-600 font-black underline underline-offset-4 decoration-2">010-4499-3866</span> 번호로 접수 진행 중입니다.
+          </p>
+          <p className="text-gray-500 text-xs sm:text-sm font-medium mb-8 break-keep leading-relaxed">
+            문자 전송 창이 자동으로 열리지 않았거나, PC 환경 등에서 수동 접수를 원하시면 아래 버튼을 이용해 주세요.
+          </p>
+          
+          <div className="flex flex-col gap-3 mb-8">
+            <a 
+              href={smsUrl}
+              className="bg-yellow-400 hover:bg-yellow-500 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md shadow-yellow-400/20"
+            >
+              <MessageCircle className="w-5 h-5" /> 문자 메시지로 접수하기
+            </a>
+            <a 
+              href="tel:01044993866" 
+              className="bg-white hover:bg-gray-50 text-black border border-gray-200 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm"
+            >
+              <Phone className="w-5 h-5 text-green-600" /> 010-4499-3866 전화상담
+            </a>
+          </div>
+
+          <button 
+            onClick={() => window.location.reload()} 
+            className="w-full bg-black hover:bg-gray-900 text-white font-bold py-4 rounded-2xl transition-colors"
+          >
+            홈으로 돌아가기
+          </button>
         </div>
       </div>
     );
@@ -1419,18 +1451,22 @@ const AppDownloadBanner = ({
           </p>
           
           <div className="flex flex-wrap justify-center lg:justify-start gap-4 mb-6">
-            <button 
-              onClick={onDownload}
+            <a 
+              href="https://apps.apple.com/kr/app/%EB%8B%AC%EC%88%98%EB%B0%B0%EA%B4%80%EC%BC%80%EC%96%B4/id6788634887" 
+              target="_blank"
+              rel="noopener noreferrer"
               className="bg-white text-[#0066CC] px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-gray-100 transition-all shadow-xl hover:-translate-y-1"
             >
               <Smartphone className="w-5 h-5" /> App Store
-            </button>
-            <button 
-              onClick={onDownload}
+            </a>
+            <a 
+              href="https://play.google.com/store/apps/details?id=com.dalsu.plumbing&pcampaignid=web_share" 
+              target="_blank"
+              rel="noopener noreferrer"
               className="bg-white text-[#0066CC] px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 hover:bg-gray-100 transition-all shadow-xl hover:-translate-y-1"
             >
               <Smartphone className="w-5 h-5" /> Google Play
-            </button>
+            </a>
           </div>
 
           {onClearStorage && (
@@ -2075,7 +2111,7 @@ export default function App() {
               onBooking={() => setIsDownloadModalOpen(true)} 
               heroImage={heroImage}
               onHeroUpload={handleImageUpload(setHeroImage, 1920, 1080, 0.85)}
-              isShared={isShared}
+              isShared={isShared || !isAdmin}
               setPage={setPage}
               setBookingType={setBookingType}
             />
@@ -2087,7 +2123,7 @@ export default function App() {
                   handleImageUpload(setters[index], 1600, 1200, 0.95)(e);
                 }
               }}
-              isShared={isShared}
+              isShared={isShared || !isAdmin}
             />
             <AITechBanner />
 
@@ -2096,7 +2132,7 @@ export default function App() {
               onSelect={(s) => setSelectedService(s)} 
               serviceImages={serviceImages as Record<ServiceType, string>}
               onImageUpload={handleServiceImageUpload}
-              isShared={isShared}
+              isShared={isShared || !isAdmin}
             />
 
             <MembershipPromo 
@@ -2146,7 +2182,7 @@ export default function App() {
                       블로그에서 시공사례 더보기 <ExternalLink className="w-3.5 h-3.5" />
                     </a>
 
-                    {!isShared && (
+                    {!isShared && isAdmin && (
                       <label className="bg-black text-white px-6 py-3.5 rounded-2xl font-black text-xs cursor-pointer hover:bg-gray-800 transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
                         <Upload className="w-4 h-4" /> 사진 직접 첨부하기
                         <input 
@@ -2183,7 +2219,7 @@ export default function App() {
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40" />
                             
-                            {!isShared && (
+                            {!isShared && isAdmin && (
                               <button 
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -2224,7 +2260,7 @@ export default function App() {
               )}
 
               {/* Image Upload Overlay */}
-              {!isShared && (
+              {!isShared && isAdmin && (
                 <label className="absolute top-8 right-8 bg-white/20 backdrop-blur-md p-3 rounded-full border border-white/30 shadow-xl cursor-pointer opacity-0 group-hover/reviews:opacity-100 transition-opacity z-30">
                   <Camera className="w-5 h-5 text-gray-600" />
                   <input 
@@ -2292,7 +2328,7 @@ export default function App() {
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-40" />
                             
-                            {!isShared && (
+                            {!isShared && isAdmin && (
                               <label 
                                 onClick={(e) => e.stopPropagation()} 
                                 className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30"
@@ -2340,9 +2376,9 @@ export default function App() {
               id="download-section"
               appMockupImage={appMockupImage}
               onAppMockupUpload={handleImageUpload(setAppMockupImage, 1200, 1200, 0.85)}
-              onClearStorage={!isShared ? () => { localStorage.clear(); window.location.reload(); } : undefined}
+              onClearStorage={!isShared && isAdmin ? () => { localStorage.clear(); window.location.reload(); } : undefined}
               onDownload={() => setIsDownloadModalOpen(true)}
-              isShared={isShared}
+              isShared={isShared || !isAdmin}
             />
 
             <PartnersSection />
@@ -2358,7 +2394,7 @@ export default function App() {
                 />
                 
                 {/* Image Upload Overlay */}
-                {!isShared && (
+                {!isShared && isAdmin && (
                   <label className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30">
                     <div className="bg-white/20 backdrop-blur-md p-6 rounded-full border border-white/30 shadow-2xl">
                       <Camera className="w-10 h-10 text-white" />
@@ -2415,12 +2451,22 @@ export default function App() {
               <div className="text-center">
                 <p className="text-gray-400 font-bold mb-4">전용 앱에서 더 편리하게 관리하세요</p>
                 <div className="flex justify-center gap-4">
-                  <div className="bg-gray-100 px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2">
+                  <a 
+                    href="https://apps.apple.com/kr/app/%EB%8B%AC%EC%88%98%EB%B0%B0%EA%B4%80%EC%BC%80%EC%96%B4/id6788634887" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="bg-gray-100 hover:bg-gray-200 text-black px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-colors"
+                  >
                     <Smartphone className="w-4 h-4" /> App Store
-                  </div>
-                  <div className="bg-gray-100 px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2">
+                  </a>
+                  <a 
+                    href="https://play.google.com/store/apps/details?id=com.dalsu.plumbing&pcampaignid=web_share" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="bg-gray-100 hover:bg-gray-200 text-black px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-colors"
+                  >
                     <Smartphone className="w-4 h-4" /> Google Play
-                  </div>
+                  </a>
                 </div>
               </div>
             </div>
@@ -2434,7 +2480,7 @@ export default function App() {
               <div className="aspect-video bg-gray-100 rounded-[32px] sm:rounded-[40px] mb-10 sm:mb-12 overflow-hidden relative group">
                 <img src={aboutImage} alt="우리 팀" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 {/* Image Upload Overlay */}
-                {!isShared && (
+                {!isShared && isAdmin && (
                   <label className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-30">
                     <div className="bg-white/20 backdrop-blur-md p-4 rounded-full border border-white/30">
                       <Camera className="w-8 h-8 text-white" />
@@ -2475,7 +2521,7 @@ export default function App() {
         return (
           <Notices 
             notices={notices} 
-            isShared={isShared && !isAdmin} 
+            isShared={isShared || !isAdmin} 
             onAdd={handleAddNotice} 
             onDelete={handleDeleteNotice} 
           />
@@ -2496,7 +2542,7 @@ export default function App() {
           }} 
           logoImage={logoImage}
           onLogoUpload={handleImageUpload(setLogoImage, 1200, 600, 0.95)}
-          isShared={isShared}
+          isShared={isShared || !isAdmin}
           logoScale={logoScale}
           onLogoScaleChange={setLogoScale}
           isAdmin={isAdmin}
@@ -2598,7 +2644,7 @@ export default function App() {
             </a>
 
             {/* Instagram */}
-            <a href="https://www.instagram.com/dalsu2018?igsh=dWQwbHB4amVvZTlh" target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1">
+            <a href="https://www.instagram.com/dalsu2018/" target="_blank" rel="noreferrer" className="flex flex-col items-center gap-1">
               <div className="w-14 h-14 bg-gradient-to-tr from-[#FFDC80] via-[#E1306C] to-[#833AB4] rounded-2xl flex items-center justify-center shadow-[0_10px_25px_rgba(225,48,108,0.4)] border-2 border-white">
                 <Instagram className="w-7 h-7 text-white" />
               </div>
