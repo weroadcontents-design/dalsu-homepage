@@ -35,7 +35,14 @@ import {
   Globe,
   Lock,
   Unlock,
-  ExternalLink
+  ExternalLink,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  List
 } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 
@@ -49,6 +56,8 @@ interface Notice {
   content: string;
   date: string;
   isImportant?: boolean;
+  category?: 'notice' | 'press' | 'other';
+  imageUrl?: string;
 }
 
 const SERVICES: Record<ServiceType, { title: string; desc: string; icon: any; bgImage: string; symptoms: string[] }> = {
@@ -1752,72 +1761,529 @@ const Notices = ({
   onDelete: (id: number) => void
 }) => {
   const [isAdding, setIsAdding] = useState(false);
-  const [newNotice, setNewNotice] = useState({ title: '', content: '', isImportant: false });
+  const [newNotice, setNewNotice] = useState({ 
+    title: '', 
+    content: '', 
+    isImportant: false,
+    category: 'notice' as 'notice' | 'press' | 'other',
+    imageUrl: ''
+  });
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [filterTab, setFilterTab] = useState<'all' | 'notice' | 'press' | 'other'>('all');
+  const [selectedElement, setSelectedElement] = useState<HTMLElement | null>(null);
+
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isAdding && editorRef.current) {
+      editorRef.current.innerHTML = '';
+      setSelectedElement(null);
+    }
+  }, [isAdding]);
+
+  const handleEditorInput = () => {
+    if (editorRef.current) {
+      // Clone the node so we can clean up any visual selection outlines before saving to newNotice state
+      const clone = editorRef.current.cloneNode(true) as HTMLDivElement;
+      const imgs = clone.querySelectorAll('img');
+      imgs.forEach((img: any) => {
+        img.style.outline = '';
+        img.style.outlineOffset = '';
+      });
+      setNewNotice(prev => ({ ...prev, content: clone.innerHTML }));
+    }
+  };
+
+  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      // Clear outline from any previous selected element
+      if (selectedElement) {
+        selectedElement.style.outline = '';
+        selectedElement.style.outlineOffset = '';
+      }
+      
+      // Set new selected element and give it an active outline
+      target.style.outline = '3px solid #fbbf24';
+      target.style.outlineOffset = '2px';
+      setSelectedElement(target);
+    } else {
+      if (selectedElement) {
+        selectedElement.style.outline = '';
+        selectedElement.style.outlineOffset = '';
+      }
+      setSelectedElement(null);
+    }
+  };
+
+  const handleEditorPaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    const html = clipboardData.getData('text/html');
+    const text = clipboardData.getData('text/plain');
+
+    if (html) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      // 1. Process all image tags to handle remote Hotlinking bypass
+      const imgs = doc.querySelectorAll('img');
+      for (let i = 0; i < imgs.length; i++) {
+        const img = imgs[i];
+        img.setAttribute('referrerpolicy', 'no-referrer');
+        img.setAttribute('style', 'max-width: 100%; height: auto; border-radius: 12px; margin: 12px auto; display: block;');
+      }
+
+      // 2. Insert the cleaned HTML
+      const cleanedHtml = doc.body.innerHTML;
+      document.execCommand('insertHTML', false, cleanedHtml);
+    } else if (clipboardData.files && clipboardData.files.length > 0) {
+      for (let i = 0; i < clipboardData.files.length; i++) {
+        const file = clipboardData.files[i];
+        if (file.type.startsWith('image/')) {
+          try {
+            const optimized = await optimizeImage(file, 1600, 1200, 0.85);
+            const imgHtml = `<img src="${optimized}" referrerpolicy="no-referrer" style="max-width: 100%; height: auto; border-radius: 12px; margin: 12px auto; display: block;" />`;
+            document.execCommand('insertHTML', false, imgHtml);
+          } catch (err) {
+            console.error("Paste image process failed", err);
+          }
+        }
+      }
+    } else if (text) {
+      const formattedText = text.replace(/\r\n/g, '<br>').replace(/\n/g, '<br>').replace(/\r/g, '<br>');
+      document.execCommand('insertHTML', false, formattedText);
+    }
+
+    handleEditorInput();
+  };
+
+  const runCommand = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+    handleEditorInput();
+  };
+
+  const filteredNotices = notices.filter(notice => {
+    if (filterTab === 'all') return true;
+    if (filterTab === 'notice') {
+      return notice.category === 'notice' || !notice.category;
+    }
+    return notice.category === filterTab;
+  });
 
   return (
-    <div className="pt-12 sm:pt-16 pb-12 px-4">
+    <div className="pt-12 sm:pt-16 pb-12 px-4 bg-gray-50 min-h-screen">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8 sm:mb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-12">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-black mb-2">공지사항</h1>
-            <p className="text-gray-500 font-bold">달수배관케어의 새로운 소식을 전해드립니다.</p>
+            <h1 className="text-3xl sm:text-4xl font-black mb-2">공지 & 소식</h1>
+            <p className="text-gray-500 font-bold">달수배관케어의 새로운 소식과 보도자료를 전해드립니다.</p>
           </div>
           {!isShared && (
             <button 
               onClick={() => setIsAdding(true)}
-              className="bg-black text-white px-6 py-3 rounded-2xl font-black text-sm hover:bg-gray-800 transition-all flex items-center gap-2"
+              className="bg-black text-white px-6 py-3.5 rounded-2xl font-black text-sm hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 self-start sm:self-auto"
             >
-              <Upload className="w-4 h-4" /> 글쓰기
+              <Upload className="w-4 h-4" /> 새 소식 글쓰기
             </button>
           )}
+        </div>
+
+        {/* Category Filters */}
+        <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200 pb-4">
+          {(['all', 'notice', 'press', 'other'] as const).map((tab) => {
+            const label = tab === 'all' ? '전체' : tab === 'notice' ? '공지사항' : tab === 'press' ? '보도자료' : '기타 소식';
+            const isActive = filterTab === tab;
+            
+            // Count for badge
+            const count = notices.filter(n => {
+              if (tab === 'all') return true;
+              if (tab === 'notice') return n.category === 'notice' || !n.category;
+              return n.category === tab;
+            }).length;
+
+            return (
+              <button
+                key={tab}
+                onClick={() => {
+                  setFilterTab(tab);
+                  setExpandedId(null);
+                }}
+                className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+                  isActive 
+                    ? 'bg-yellow-400 text-black shadow-md shadow-yellow-400/20' 
+                    : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                {label}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-black/10 text-black' : 'bg-gray-100 text-gray-400'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {isAdding && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gray-50 p-6 sm:p-8 rounded-[32px] mb-12 border border-gray-100"
+            className="bg-white p-6 sm:p-8 rounded-[32px] mb-12 border border-gray-200 shadow-xl transition-all"
           >
-            <h2 className="text-xl font-black mb-6">새 공지사항 작성</h2>
-            <div className="space-y-4">
-              <input 
-                type="text" 
-                placeholder="제목을 입력하세요" 
-                className="w-full bg-white border-none rounded-2xl p-4 font-bold focus:ring-2 focus:ring-yellow-400 outline-none"
-                value={newNotice.title}
-                onChange={(e) => setNewNotice({...newNotice, title: e.target.value})}
-              />
-              <textarea 
-                placeholder="내용을 입력하세요" 
-                className="w-full bg-white border-none rounded-2xl p-4 font-medium h-40 focus:ring-2 focus:ring-yellow-400 outline-none resize-none"
-                value={newNotice.content}
-                onChange={(e) => setNewNotice({...newNotice, content: e.target.value})}
-              />
-              <label className="flex items-center gap-2 cursor-pointer">
+            <h2 className="text-xl font-black mb-6">새로운 글 작성</h2>
+            <div className="space-y-5">
+              {/* Category Selector */}
+              <div>
+                <label className="block text-xs sm:text-sm font-black mb-2 text-gray-700">분류 (카테고리)</label>
+                <div className="flex gap-2">
+                  {(['notice', 'press', 'other'] as const).map((cat) => {
+                    const label = cat === 'notice' ? '공지사항' : cat === 'press' ? '보도자료' : '기타 소식';
+                    const isSelected = newNotice.category === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setNewNotice({...newNotice, category: cat})}
+                        className={`px-4 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                          isSelected 
+                            ? 'bg-black border-black text-white shadow-md' 
+                            : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-black mb-2 text-gray-700">제목</label>
+                <input 
+                  type="text" 
+                  placeholder="제목을 입력하세요" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 font-bold focus:ring-2 focus:ring-yellow-400 focus:bg-white outline-none transition-all"
+                  value={newNotice.title}
+                  onChange={(e) => setNewNotice({...newNotice, title: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-black mb-2 text-gray-700">내용</label>
+                
+                {/* Rich Editor Container */}
+                <div className="border border-gray-200 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-yellow-400 bg-gray-50 focus-within:bg-white transition-all">
+                  {/* Toolbar */}
+                  <div className="flex flex-wrap gap-1 items-center p-2 bg-gray-100 border-b border-gray-200 select-none">
+                    <button 
+                      type="button" 
+                      onClick={() => runCommand('bold')} 
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-black transition-colors"
+                      title="굵게"
+                    >
+                      <Bold className="w-4 h-4" />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => runCommand('italic')} 
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-black transition-colors"
+                      title="기울임"
+                    >
+                      <Italic className="w-4 h-4" />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => runCommand('underline')} 
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-black transition-colors"
+                      title="밑줄"
+                    >
+                      <Underline className="w-4 h-4" />
+                    </button>
+                    
+                    <div className="w-[1px] h-4 bg-gray-300 mx-1" />
+
+                    <button 
+                      type="button" 
+                      onClick={() => runCommand('justifyLeft')} 
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-black transition-colors"
+                      title="좌측 정렬"
+                    >
+                      <AlignLeft className="w-4 h-4" />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => runCommand('justifyCenter')} 
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-black transition-colors"
+                      title="중앙 정렬"
+                    >
+                      <AlignCenter className="w-4 h-4" />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => runCommand('justifyRight')} 
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-black transition-colors"
+                      title="우측 정렬"
+                    >
+                      <AlignRight className="w-4 h-4" />
+                    </button>
+
+                    <div className="w-[1px] h-4 bg-gray-300 mx-1" />
+
+                    <button 
+                      type="button" 
+                      onClick={() => runCommand('insertUnorderedList')} 
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-black transition-colors"
+                      title="글머리 기호"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+
+                    <div className="w-[1px] h-4 bg-gray-300 mx-1" />
+
+                    {/* Inline Image Upload Trigger */}
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('inline-image-picker')?.click()}
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600 hover:text-black transition-colors flex items-center gap-1.5 text-xs font-black"
+                      title="이미지 추가"
+                    >
+                      <Camera className="w-4 h-4 text-gray-500" />
+                      <span>이미지 본문 삽입</span>
+                    </button>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      multiple 
+                      id="inline-image-picker"
+                      className="hidden" 
+                      onChange={async (e) => {
+                        if (e.target.files) {
+                          for (let i = 0; i < e.target.files.length; i++) {
+                            const file = e.target.files[i];
+                            try {
+                              const optimized = await optimizeImage(file, 1600, 1200, 0.85);
+                              const imgHtml = `<img src="${optimized}" referrerpolicy="no-referrer" style="max-width: 100%; height: auto; border-radius: 12px; margin: 12px auto; display: block;" />`;
+                              document.execCommand('insertHTML', false, imgHtml);
+                              handleEditorInput();
+                            } catch (err) {
+                              console.error("Inline image upload failed", err);
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Active Selected Image Controller */}
+                  {selectedElement && selectedElement.tagName === 'IMG' && (
+                    <div className="flex flex-wrap gap-2 items-center p-3 bg-amber-50/80 border-b border-amber-100 select-none text-xs text-amber-900 font-bold">
+                      <span className="bg-amber-200/50 px-2.5 py-1 rounded-lg text-amber-800 flex items-center gap-1">
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        선택된 이미지 간격 & 정렬 설정:
+                      </span>
+                      
+                      <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-amber-200/40">
+                        <span className="text-gray-500 text-[11px] px-1 font-medium">위아래 간격:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentMargin = selectedElement.style.marginTop || '12px';
+                            let numericValue = parseInt(currentMargin) || 12;
+                            numericValue = Math.max(0, numericValue - 4);
+                            selectedElement.style.marginTop = `${numericValue}px`;
+                            selectedElement.style.marginBottom = `${numericValue}px`;
+                            handleEditorInput();
+                          }}
+                          className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg font-black transition-all text-[11px]"
+                          title="간격 줄이기"
+                        >
+                          - 좁게 ({selectedElement.style.marginTop || '12px'})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentMargin = selectedElement.style.marginTop || '12px';
+                            let numericValue = parseInt(currentMargin) || 12;
+                            numericValue = Math.min(80, numericValue + 4);
+                            selectedElement.style.marginTop = `${numericValue}px`;
+                            selectedElement.style.marginBottom = `${numericValue}px`;
+                            handleEditorInput();
+                          }}
+                          className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg font-black transition-all text-[11px]"
+                          title="간격 늘리기"
+                        >
+                          + 넓게
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-amber-200/40">
+                        <span className="text-gray-500 text-[11px] px-1 font-medium">가로 크기:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectedElement.style.maxWidth = '30%';
+                            handleEditorInput();
+                          }}
+                          className={`px-2 py-1 text-[11px] rounded-lg transition-all ${selectedElement.style.maxWidth === '30%' ? 'bg-yellow-400 text-black font-black' : 'bg-transparent text-gray-600 hover:bg-gray-100'}`}
+                        >
+                          작게(30%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectedElement.style.maxWidth = '60%';
+                            handleEditorInput();
+                          }}
+                          className={`px-2 py-1 text-[11px] rounded-lg transition-all ${selectedElement.style.maxWidth === '60%' ? 'bg-yellow-400 text-black font-black' : 'bg-transparent text-gray-600 hover:bg-gray-100'}`}
+                        >
+                          중간(60%)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectedElement.style.maxWidth = '100%';
+                            handleEditorInput();
+                          }}
+                          className={`px-2 py-1 text-[11px] rounded-lg transition-all ${selectedElement.style.maxWidth === '100%' || !selectedElement.style.maxWidth ? 'bg-yellow-400 text-black font-black' : 'bg-transparent text-gray-600 hover:bg-gray-100'}`}
+                        >
+                          전체(100%)
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-amber-200/40">
+                        <span className="text-gray-500 text-[11px] px-1 font-medium">정렬:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectedElement.style.marginLeft = '0';
+                            selectedElement.style.marginRight = 'auto';
+                            selectedElement.style.display = 'block';
+                            handleEditorInput();
+                          }}
+                          className="px-2 py-1 text-[11px] rounded-lg bg-transparent text-gray-600 hover:bg-gray-100 transition-all"
+                        >
+                          왼쪽
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectedElement.style.marginLeft = 'auto';
+                            selectedElement.style.marginRight = 'auto';
+                            selectedElement.style.display = 'block';
+                            handleEditorInput();
+                          }}
+                          className="px-2 py-1 text-[11px] rounded-lg bg-transparent text-gray-600 hover:bg-gray-100 transition-all"
+                        >
+                          가운데
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            selectedElement.style.marginLeft = 'auto';
+                            selectedElement.style.marginRight = '0';
+                            selectedElement.style.display = 'block';
+                            handleEditorInput();
+                          }}
+                          className="px-2 py-1 text-[11px] rounded-lg bg-transparent text-gray-600 hover:bg-gray-100 transition-all"
+                        >
+                          오른쪽
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          selectedElement.remove();
+                          setSelectedElement(null);
+                          handleEditorInput();
+                        }}
+                        className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all ml-auto font-black flex items-center gap-1 text-[11px] shadow-sm shadow-red-500/10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>이 사진 삭제</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ContentEditable Area */}
+                  <div 
+                    ref={editorRef}
+                    contentEditable
+                    onInput={handleEditorInput}
+                    onPaste={handleEditorPaste}
+                    onClick={handleEditorClick}
+                    className="w-full min-h-[300px] max-h-[600px] p-4 font-medium outline-none overflow-y-auto bg-transparent prose prose-sm max-w-none focus:bg-white transition-colors empty:before:content-[attr(placeholder)] before:text-gray-400 before:font-medium before:pointer-events-none"
+                    placeholder="여기에 내용을 입력하거나 네이버 블로그 글을 복사해서 붙여넣으세요! 글과 이미지가 통째로 완벽하게 등록됩니다."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-black mb-2 text-gray-700">대표 이미지 (선택)</label>
+                {newNotice.imageUrl ? (
+                  <div className="relative w-full max-w-md aspect-video rounded-2xl overflow-hidden border border-gray-200 group">
+                    <img src={newNotice.imageUrl} alt="첨부 이미지 프리뷰" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setNewNotice({ ...newNotice, imageUrl: '' })}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black text-white p-2 rounded-full transition-colors z-10"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-36 bg-gray-50 border border-dashed border-gray-300 rounded-2xl cursor-pointer hover:bg-gray-100/50 transition-all p-4">
+                    <div className="flex flex-col items-center justify-center text-center">
+                      <Camera className="w-8 h-8 text-gray-400 mb-2" />
+                      <p className="text-xs text-gray-600 font-bold">클릭하여 대표 이미지 파일 업로드</p>
+                      <p className="text-[11px] text-gray-400 mt-1 font-medium">글의 메인 썸네일로 사용할 대표 이미지입니다.</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        if (e.target.files?.[0]) {
+                          try {
+                            const optimized = await optimizeImage(e.target.files[0], 1600, 1200, 0.85);
+                            setNewNotice(prev => ({ ...prev, imageUrl: optimized }));
+                          } catch (err) {
+                            console.error("Notice image optimization failed", err);
+                          }
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer w-fit">
                 <input 
                   type="checkbox" 
                   checked={newNotice.isImportant}
                   onChange={(e) => setNewNotice({...newNotice, isImportant: e.target.checked})}
                   className="w-5 h-5 rounded border-gray-300 text-yellow-400 focus:ring-yellow-400"
                 />
-                <span className="font-bold text-sm">중요 공지로 설정</span>
+                <span className="font-bold text-sm text-gray-700">중요 항목으로 상단 고정 설정</span>
               </label>
+
               <div className="flex gap-3 pt-4">
                 <button 
                   onClick={() => {
                     if (!newNotice.title || !newNotice.content) return;
                     onAdd(newNotice);
                     setIsAdding(false);
-                    setNewNotice({ title: '', content: '', isImportant: false });
+                    setNewNotice({ title: '', content: '', isImportant: false, category: 'notice', imageUrl: '' });
                   }}
-                  className="flex-1 bg-yellow-400 text-black font-black py-4 rounded-2xl hover:bg-yellow-500 transition-all"
+                  className="flex-1 bg-yellow-400 text-black font-black py-4 rounded-2xl hover:bg-yellow-500 transition-all shadow-md shadow-yellow-400/10"
                 >
                   등록하기
                 </button>
                 <button 
                   onClick={() => setIsAdding(false)}
-                  className="flex-1 bg-gray-200 text-gray-600 font-black py-4 rounded-2xl hover:bg-gray-300 transition-all"
+                  className="flex-1 bg-gray-100 text-gray-600 font-black py-4 rounded-2xl hover:bg-gray-200 transition-all"
                 >
                   취소
                 </button>
@@ -1827,13 +2293,13 @@ const Notices = ({
         )}
 
         <div className="space-y-4">
-          {notices.length === 0 ? (
-            <div className="text-center py-20 bg-gray-50 rounded-[40px] border border-dashed border-gray-200">
+          {filteredNotices.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-[40px] border border-dashed border-gray-200">
               <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-400 font-bold">등록된 공지사항이 없습니다.</p>
+              <p className="text-gray-400 font-bold">등록된 글이 없습니다.</p>
             </div>
           ) : (
-            notices.map((notice) => (
+            filteredNotices.map((notice) => (
               <div 
                 key={notice.id} 
                 className={`bg-white rounded-[32px] border transition-all overflow-hidden ${expandedId === notice.id ? 'border-yellow-400 shadow-xl shadow-yellow-400/5' : 'border-gray-100 hover:border-gray-200'}`}
@@ -1843,13 +2309,22 @@ const Notices = ({
                   className="w-full text-left p-6 sm:p-8 flex items-center justify-between gap-4"
                 >
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                       {notice.isImportant && (
                         <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider">중요</span>
                       )}
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                        notice.category === 'press' 
+                          ? 'bg-blue-100 text-blue-600' 
+                          : notice.category === 'other'
+                          ? 'bg-purple-100 text-purple-600'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {notice.category === 'press' ? '보도자료' : notice.category === 'other' ? '기타 소식' : '공지사항'}
+                      </span>
                       <span className="text-gray-400 text-xs font-bold">{notice.date}</span>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-black break-keep">{notice.title}</h3>
+                    <h3 className="text-lg sm:text-xl font-black break-keep text-gray-900">{notice.title}</h3>
                   </div>
                   <ChevronRight className={`w-6 h-6 text-gray-300 transition-transform ${expandedId === notice.id ? 'rotate-90' : ''}`} />
                 </button>
@@ -1863,9 +2338,26 @@ const Notices = ({
                       className="overflow-hidden"
                     >
                       <div className="px-6 sm:px-8 pb-8 pt-2 border-t border-gray-50">
-                        <div className="prose prose-sm sm:prose-base max-w-none text-gray-600 font-medium whitespace-pre-wrap leading-relaxed">
-                          {notice.content}
-                        </div>
+                        {notice.content.includes('<') && notice.content.includes('>') ? (
+                          <div 
+                            className="prose prose-sm sm:prose-base max-w-none text-gray-600 font-medium leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: notice.content }}
+                          />
+                        ) : (
+                          <div className="prose prose-sm sm:prose-base max-w-none text-gray-600 font-medium whitespace-pre-wrap leading-relaxed">
+                            {notice.content}
+                          </div>
+                        )}
+                        {notice.imageUrl && (
+                          <div className="mt-4 mb-2 rounded-2xl overflow-hidden border border-gray-100 shadow-sm max-w-xl">
+                            <img 
+                              src={notice.imageUrl} 
+                              alt={notice.title} 
+                              className="w-full h-auto object-contain max-h-[500px]" 
+                              referrerPolicy="no-referrer" 
+                            />
+                          </div>
+                        )}
                         {!isShared && (
                           <div className="mt-8 pt-6 border-t border-gray-50 flex justify-end">
                             <button 
@@ -2535,7 +3027,7 @@ export default function App() {
         return (
           <Notices 
             notices={notices} 
-            isShared={isShared || !isAdmin} 
+            isShared={!isAdmin} 
             onAdd={handleAddNotice} 
             onDelete={handleDeleteNotice} 
           />
