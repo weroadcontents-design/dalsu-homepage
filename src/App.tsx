@@ -425,6 +425,7 @@ const Navbar = ({
             <button onClick={() => setPage('membership')} className="hover:text-yellow-600 transition-colors">멤버십</button>
             <button onClick={() => setPage('notices')} className="hover:text-yellow-600 transition-colors">공지사항</button>
             <button onClick={() => setPage('about')} className="hover:text-yellow-600 transition-colors">회사소개</button>
+            <a href="https://www.dalsumaster.com/" target="_blank" rel="noopener noreferrer" className="hover:text-yellow-600 transition-colors">기술교육</a>
           </div>
           
           <div className="flex items-center gap-2 mr-4">
@@ -489,6 +490,7 @@ const Navbar = ({
             <button onClick={() => { setPage('membership'); setIsOpen(false); }} className="text-left hover:text-blue-600 transition-colors">멤버십 소개</button>
             <button onClick={() => { setPage('notices'); setIsOpen(false); }} className="text-left hover:text-blue-600 transition-colors">공지사항</button>
             <button onClick={() => { setPage('about'); setIsOpen(false); }} className="text-left hover:text-blue-600 transition-colors">회사소개</button>
+            <a href="https://www.dalsumaster.com/" target="_blank" rel="noopener noreferrer" className="text-left hover:text-blue-600 transition-colors">기술교육</a>
             <div className="flex flex-col gap-3">
               <button onClick={() => { setPage('booking'); setIsOpen(false); }} className="bg-yellow-400 text-black p-5 rounded-2xl shadow-lg shadow-yellow-400/20 text-center">상담신청하기</button>
               <button 
@@ -764,12 +766,12 @@ const Hero = ({
             </motion.div>
 
             {/* Buttons */}
-            <div className="flex flex-col md:flex-row gap-3 sm:gap-4 w-full mt-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:flex xl:flex-row gap-3 sm:gap-4 w-full mt-8">
               <motion.button
                 onClick={onBooking}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-[#0f172a] text-white rounded-full px-6 py-4 sm:py-5 text-base sm:text-lg font-black flex items-center justify-center gap-2 shadow-xl shadow-black/10 transition-all w-full md:flex-1 whitespace-nowrap"
+                className="bg-[#0f172a] text-white rounded-full px-6 py-4 sm:py-5 text-base sm:text-lg font-black flex items-center justify-center gap-2 shadow-xl shadow-black/10 transition-all w-full xl:flex-1 whitespace-nowrap"
               >
                 <Zap className="w-5 h-5 fill-white" />
                 AI 무료 진단 시작
@@ -782,7 +784,7 @@ const Hero = ({
                 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-[#0f172a] border-2 border-[#0f172a] rounded-full px-6 py-4 sm:py-5 text-base sm:text-lg font-black flex items-center justify-center shadow-lg transition-all w-full md:flex-1 whitespace-nowrap"
+                className="bg-white text-[#0f172a] border-2 border-[#0f172a] rounded-full px-6 py-4 sm:py-5 text-base sm:text-lg font-black flex items-center justify-center shadow-lg transition-all w-full xl:flex-1 whitespace-nowrap"
               >
                 서비스 상세 보기
               </motion.button>
@@ -794,11 +796,23 @@ const Hero = ({
                 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-pink-500 text-white rounded-full px-6 py-4 sm:py-5 text-base sm:text-lg font-black flex items-center justify-center gap-2 shadow-xl shadow-pink-500/20 transition-all w-full md:flex-1 whitespace-nowrap"
+                className="bg-pink-500 text-white rounded-full px-6 py-4 sm:py-5 text-base sm:text-lg font-black flex items-center justify-center gap-2 shadow-xl shadow-pink-500/20 transition-all w-full xl:flex-1 whitespace-nowrap"
               >
                 <HeartPulse className="w-5 h-5 fill-white" />
                 여성안심 서비스 신청
               </motion.button>
+
+              <motion.a
+                href="https://www.dalsumaster.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-yellow-400 hover:bg-yellow-500 text-black rounded-full px-6 py-4 sm:py-5 text-base sm:text-lg font-black flex items-center justify-center gap-2 shadow-xl shadow-yellow-400/20 transition-all w-full xl:flex-1 whitespace-nowrap"
+              >
+                <BookOpen className="w-5 h-5" />
+                달수마스터 기술교육
+              </motion.a>
             </div>
 
             {/* Statistics Bar (Enhanced) */}
